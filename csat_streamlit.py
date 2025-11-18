@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 # Parameters
 labels = ['Quality', 'Planning', 'Schedule', 'Resource', 'Risk',
@@ -61,6 +62,46 @@ if high_vars:
     st.write('### High average scores (above 3):')
     for label, avg in high_vars:
         st.write(f'{label}: {avg:.2f} - {comments.get(label, "")}')
+
+
+# --- Strengths & Lowlights Report ---
+st.header('Strengths & Lowlights')
+# Build DataFrame of averages and categories
+df = pd.DataFrame(avg_with_labels, columns=['Variable', 'Average'])
+df['Comment'] = df['Variable'].map(comments)
+df['Category'] = 'Neutral'
+df.loc[df['Average'] > 3, 'Category'] = 'High'
+df.loc[df['Average'] < 2, 'Category'] = 'Low'
+
+st.write('Summary of variable averages:')
+st.dataframe(df.style.format({'Average': '{:.2f}'}))
+
+st.subheader('Average scores (bar chart)')
+st.bar_chart(df.set_index('Variable')['Average'])
+
+# Lists for strengths and lowlights with comments
+strengths = df[df['Category'] == 'High']
+lowlights = df[df['Category'] == 'Low']
+
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader('Strengths (High > 3)')
+    if not strengths.empty:
+        for _, row in strengths.iterrows():
+            st.markdown(f"**{row['Variable']}** - {row['Average']:.2f} \n\n{row['Comment']}")
+    else:
+        st.write('No strong areas detected.')
+with col2:
+    st.subheader('Lowlights (Low < 2)')
+    if not lowlights.empty:
+        for _, row in lowlights.iterrows():
+            st.markdown(f"**{row['Variable']}** - {row['Average']:.2f} \n\n{row['Comment']}")
+    else:
+        st.write('No low areas detected.')
+
+# CSV download
+csv = df.to_csv(index=False)
+st.download_button('Download strengths/lowlights CSV', csv, file_name='csat_strengths_lowlights.csv', mime='text/csv')
 
 # Radar chart
 angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
